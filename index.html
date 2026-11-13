@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesh Sculpture Mockup</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #dde2e4; overflow: hidden; }
+  canvas { width: 100vw; height: 100vh; display: block; cursor: grab; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="three.min.js"></script>
+<script>
+const c = document.getElementById('c');
+const RD = new THREE.WebGLRenderer({ canvas: c, antialias: true });
+RD.setPixelRatio(Math.min(devicePixelRatio, 2));
+const S = new THREE.Scene(); S.background = new THREE.Color(0xdde2e4); S.fog = new THREE.Fog(0xdde2e4, 60, 120);
+const cam = new THREE.PerspectiveCamera(35, 1, 0.05, 400);
+S.add(new THREE.HemisphereLight(0xffffff, 0x7f8c6c, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(12, 30, 18); S.add(sun);
+const M = (col, o) => new THREE.MeshStandardMaterial(Object.assign({ color: col, roughness: .6 }, o || {}));
+const add = (geo, mat, x, y, z, p) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); (p || S).add(m); return m; };
+const ln = (pts, col, op, p) => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, transparent: op < 1, opacity: op })); (p || S).add(l); return l; };
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const gr = add(new THREE.PlaneGeometry(120, 120), M(0xa9ad9c)); gr.rotation.x = -Math.PI / 2;
+const whiteM = M(0xf4f3ee, { roughness: .35 }), tickM = M(0x1a1a1a, { roughness: .7 }), standM = M(0x2a2a2a, { metalness: .4, roughness: .5 }), rodM = M(0x9a9890, { metalness: .7, roughness: .3 }), rubM = M(0x1e1e1e, { roughness: 1 });
+const SH = 6;
+{ const g = new THREE.Group(); add(new THREE.CylinderGeometry(1.5, 1.5, .08, 40), standM, 0, SH, 0, g);
+  const r1 = add(new THREE.TorusGeometry(1.35, .035, 8, 40), standM, 0, SH * .35, 0, g); r1.rotation.x = Math.PI / 2;
+  add(new THREE.CylinderGeometry(1.3, 1.3, .12, 40), M(0x4a4a4a, { metalness: .6, roughness: .4 }), 0, SH * .35 + .08, 0, g);
+  [0, 1, 2].forEach(i => { const a = i * 2 * Math.PI / 3 + Math.PI / 2; add(new THREE.CylinderGeometry(.05, .05, SH + .1, 8), standM, 1.4 * Math.cos(a), SH / 2, 1.4 * Math.sin(a), g); }); S.add(g); }
+const base = SH + .04;
+function annulus(r0, r1, hgt, mat, y, p) { const s = new THREE.Shape(); s.absarc(0, 0, r1, 0, Math.PI * 2); const ho = new THREE.Path(); ho.absarc(0, 0, r0, 0, Math.PI * 2); s.holes.push(ho);
+  const m = add(new THREE.ExtrudeGeometry(s, { depth: hgt, bevelEnabled: false, curveSegments: 64 }), mat, 0, y + hgt, 0, p); m.rotation.x = Math.PI / 2; return m; }
+annulus(.9, 1.05, .08, M(0x777777, { metalness: .8, roughness: .3 }), base);
+add(new THREE.BoxGeometry(.45, .32, .4), M(0x2a2a2a, { roughness: .8 }), 1.42, base + .16, 0);
+add(new THREE.CylinderGeometry(.16, .16, .1, 20), rubM, 0, base + .05, 0);
+const H = 4.5, h = H / 2, RC = 1.2, RTOP = .95, RBOT = .55, RT = .4, PW = 2.5;
+const rf = y => RT + ((y >= 0 ? RTOP : RBOT) - RT) * Math.pow(Math.abs(y) / h, PW);
+const DB = .3;
+const CY = base + .08 + DB + .04 + h;
+const body = new THREE.Group(); body.position.y = CY; S.add(body);
+annulus(.62, 1.18, DB, whiteM, -h - .04 - DB, body);
+const P = (y, r, t) => V(r * Math.cos(t), y, r * Math.sin(t));
+for (let s = -1; s <= 1; s += 2) for (let k = 0; k < 52; k++) { const ph = k / 52 * Math.PI * 2, pts = []; for (let i = 0; i <= 30; i++) { const y = -h + H * i / 30; pts.push(P(y, RC, ph + s * 1.5 * (y + h))); } ln(pts, 0x262a27, .42, body); }
+for (let s = -1; s <= 1; s += 2) for (let k = 0; k < 40; k++) { const ph = k / 40 * Math.PI * 2, pts = []; for (let i = 0; i <= 60; i++) { const y = -h + H * i / 60; pts.push(P(y, rf(y) - .004, ph + s * 1.6 * (y + h))); } ln(pts, 0x5a625c, .5, body); }
+[0, 1, 2].forEach(i => { const a = i * 2 * Math.PI / 3 + .3; add(new THREE.CylinderGeometry(.02, .02, H, 8), rodM, (RC - .06) * Math.cos(a), 0, (RC - .06) * Math.sin(a), body); });
+{ const N = 300, pos = [], idx = []; for (let i = 0; i <= N; i++) { const u = i / N, t = u * Math.PI * 4, y = -h + H * u, r = RC + .02; pos.push(r * Math.cos(t), y + .075, r * Math.sin(t), r * Math.cos(t), y - .075, r * Math.sin(t)); if (i < N) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); } }
+  const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); bg.setIndex(idx); bg.computeVertexNormals();
+  body.add(new THREE.Mesh(bg, new THREE.MeshStandardMaterial({ color: 0xb8b4a8, metalness: .7, roughness: .35, side: THREE.DoubleSide }))); }
+function dial(y, hole, th) { annulus(hole, RC + .1, th, whiteM, y - th / 2, body);
+  for (let i = 0; i < 60; i++) { const a = i / 60 * Math.PI * 2, big = i % 5 == 0, len = big ? .17 : .08, w = big ? .026 : .013, r = RC + .06 - len / 2;
+    [1, -1].forEach(sd => { const t = add(new THREE.BoxGeometry(len, .007, w), tickM, r * Math.cos(a), y + sd * (th / 2 + .004), r * Math.sin(a), body); t.rotation.y = -a; }); } }
+dial(h, RTOP, .035); dial(-h, RBOT, .06);
+const cupM = M(0xf2f1ec, { roughness: .4 }), coneM = M(0x1d1d1d, { roughness: .8 });
+[.2, .14, .17, .2, .14, .17].forEach((s, i) => { const u = .1 + i * .16, y = -h + H * u, t = u * Math.PI * 4, hh = s * 1.1;
+  const g = new THREE.Group(); const cup = new THREE.Mesh(new THREE.CylinderGeometry(s, s * .8, hh, 24), cupM); cup.rotation.x = Math.PI / 2; g.add(cup);
+  const f = new THREE.Mesh(new THREE.CircleGeometry(s * .86, 24), coneM); f.position.z = hh / 2 + .005; g.add(f);
+  g.position.copy(P(y, RC - .08 - hh / 2, t)); body.add(g); g.lookAt(P(y, RC + 3, t)); });
+const TOPY = CY + h + .9;
+add(new THREE.CylinderGeometry(.05, .05, TOPY - base - .1, 14), rodM, 0, base + .1 + (TOPY - base - .1) / 2, 0);
+add(new THREE.CylinderGeometry(.065, .065, .06, 14), M(0x555555), 0, CY - h + .3, 0);
+add(new THREE.CylinderGeometry(.03, .03, .1, 10), M(0x222222), .08, CY, 0); add(new THREE.SphereGeometry(.055, 12, 10), M(0x8a8a8a, { roughness: 1 }), .08, CY + .07, 0);
+add(new THREE.CylinderGeometry(.07, .07, .08, 14), M(0x555555), 0, TOPY - .06, 0);
+const arm = add(new THREE.CylinderGeometry(.025, .025, .55, 8), rodM, 0, TOPY, .26); arm.rotation.x = Math.PI / 2;
+const am = new THREE.Group(); am.position.set(0, TOPY - .04, .62); S.add(am);
+const cap = new THREE.Mesh(new THREE.CylinderGeometry(.075, .06, .42, 16), M(0x222222)); cap.rotation.x = Math.PI / 2; am.add(cap);
+const ws = new THREE.Mesh(new THREE.SphereGeometry(.13, 16, 12), M(0x8a8a8a, { roughness: 1 })); ws.position.z = .24; am.add(ws); am.rotation.x = .18;
+function mon(x, ry) { const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.BoxGeometry(1.7, 2.7, 2.2), M(0x2c2c2c, { roughness: .7 })); b.position.y = 1.35; g.add(b);
+  const w = new THREE.Mesh(new THREE.CircleGeometry(.62, 28), M(0x111111)); w.position.set(0, 1.0, 1.105); g.add(w);
+  const tw = new THREE.Mesh(new THREE.CircleGeometry(.2, 16), M(0x111111)); tw.position.set(0, 2.15, 1.105); g.add(tw);
+  const wedge = new THREE.Mesh(new THREE.BoxGeometry(1.7, .12, .5), M(0x3a3a3a)); wedge.position.set(0, .06, 1.0); g.add(wedge);
+  g.position.set(x, 0, -1.5); g.rotation.order = 'YXZ'; g.rotation.y = ry; g.rotation.x = -.12; S.add(g); }
+mon(-5, .35); mon(5, -.35);
+
+const spd = Math.PI * 2 / 60;
+let az = .3, el = .22, dist = 24, drag = false, px = 0, py = 0, idle = 0;
+const tgt = V(0, 5.5, 0);
+c.addEventListener('pointerdown', e => { drag = true; px = e.clientX; py = e.clientY; c.setPointerCapture(e.pointerId); c.style.cursor = 'grabbing'; });
+c.addEventListener('pointermove', e => { if (!drag) return; az -= (e.clientX - px) * .008; el = Math.max(-.6, Math.min(1.5, el + (e.clientY - py) * .006)); px = e.clientX; py = e.clientY; idle = 0; });
+c.addEventListener('pointerup', () => { drag = false; c.style.cursor = 'grab'; });
+c.addEventListener('wheel', e => { e.preventDefault(); dist = Math.max(2.5, Math.min(80, dist * (1 + e.deltaY * .001))); }, { passive: false });
+function size() { const w = c.clientWidth, hh = c.clientHeight; RD.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); }
+new ResizeObserver(size).observe(c); size();
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let last = performance.now();
+(function loop(now) { requestAnimationFrame(loop); const dt = Math.min(.1, ((now || last) - last) / 1000); last = now || last; idle++;
+  if (!still) body.rotation.y -= spd * dt; if (!drag && idle > 200 && !still) az += .0008;
+  cam.position.set(tgt.x + dist * Math.cos(el) * Math.sin(az), tgt.y + dist * Math.sin(el), tgt.z + dist * Math.cos(el) * Math.cos(az)); cam.lookAt(tgt); RD.render(S, cam); })();
+</script>
+</body>
+</html>
